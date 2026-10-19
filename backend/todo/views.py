@@ -4,7 +4,6 @@ from typing import Generator
 import ollama
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, StreamingHttpResponse
-from django.views.decorators.csrf import csrf_exempt
 from .models import Conversation, ChatMessage
 
 logger = logging.getLogger(__name__)
@@ -82,7 +81,6 @@ def delete_chat(request, conversation_id):
     conversation.delete()
     return redirect('index')
 
-@csrf_exempt
 def chat_api(request):
     """High-performance streaming and standard chat endpoint."""
     if request.method != "POST":
