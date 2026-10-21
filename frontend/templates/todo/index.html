@@ -1,181 +1,42 @@
 {% load static %}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jarvis AI Assistant - Black & Green Matrix Theme</title>
-
-    <!-- Fonts & Styling Libraries -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <!-- Highlight.js CSS for Code Highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-
-    <!-- Custom Modular Stylesheet -->
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Jarvis // Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
-
 <body>
-
-    <div class="app-wrapper">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <span class="brand-title d-flex align-items-center gap-2">
-                        <i class="fa-solid fa-earth text-success"></i> Jarvis AI
-                    </span>
-                </div>
-
-                <a href="{% url 'new_chat' %}" class="btn-new-chat">
-                    <i class="fa-solid fa-plus"></i> New Chat
-                </a>
-            </div>
-
-            <!-- Thread History List -->
-            <div class="threads-list">
-                <div class="text-uppercase text-success fw-bold px-3 mb-2"
-                    style="font-size: 0.7rem; letter-spacing: 1px; color: #10b981 !important;">
-                    Recent Conversations
-                </div>
-
-                {% if conversations %}
-                {% for thread in conversations %}
-                <a href="{% url 'conversation_detail' thread.id %}"
-                    class="thread-item {% if active_conversation and active_conversation.id == thread.id %}active{% endif %}">
-                    <div class="d-flex align-items-center gap-2 overflow-hidden">
-                        <i class="fa-regular fa-message opacity-75 text-success"></i>
-                        <span class="thread-title">{{ thread.title }}</span>
-                    </div>
-                    <span class="text-danger opacity-50 hover-opacity-100 p-1"
-                        onclick="event.preventDefault(); event.stopPropagation(); if(confirm('Delete conversation?')) window.location.href='{% url 'delete_chat' thread.id %}';">
-                        <i class="fa-regular fa-trash-can"></i>
-                    </span>
-                </a>
-                {% endfor %}
-                {% else %}
-                <div class="text-center text-secondary py-4 fs-7">No previous chats</div>
-                {% endif %}
-            </div>
-        </aside>
-
-        <!-- Main Chat Panel -->
-        <main class="main-chat">
-            <!-- Navbar -->
-            <header class="chat-navbar">
-                <div class="d-flex align-items-center gap-3">
-                    <h5 class="fw-bold mb-0 text-light d-flex align-items-center gap-2">
-                        <i class="fa-solid fa-shield-halved text-success"></i>
-                        <span>{% if active_conversation %}{{ active_conversation.title }}{% else %}New Conversation{% endif %}</span>
-                    </h5>
-                </div>
-                <div class="d-flex align-items-center gap-2 text-success fs-7 fw-semibold">
-                    <span class="d-inline-block rounded-circle bg-success shadow-sm"
-                        style="width: 8px; height: 8px; box-shadow: 0 0 8px #00ff87;"></span>
-                    <span>{{ model_name|default:"jarvis-ft:latest" }} Online</span>
-                </div>
-            </header>
-
-            <!-- Messages Stream Area -->
-            <div class="messages-container" id="messagesContainer">
-                {% if chat_messages %}
-                {% for msg in chat_messages %}
-                <div class="msg-wrapper {% if msg.sender == 'user' %}user{% else %}ai{% endif %}">
-                    <div class="avatar">
-                        {% if msg.sender == 'user' %}
-                        <i class="fa-solid fa-user"></i>
-                        {% else %}
-                        <i class="fa-solid fa-brain"></i>
-                        {% endif %}
-                    </div>
-                    <div class="msg-bubble">
-                        <div class="msg-content"><template class="raw-content">{{ msg.content }}</template></div>
-                        <div class="text-end text-secondary fs-7 mt-2"
-                            style="font-size: 0.72rem; color: #6ee7b7 !important;">{{ msg.created_at|date:"H:i" }}</div>
-                    </div>
-                </div>
-                {% endfor %}
-                {% else %}
-                <!-- Hero Welcome State -->
-                <div class="hero-state">
-                    <div class="hero-icon"><i class="fa-solid fa-terminal"></i></div>
-                    <h2 class="fw-bold mb-2 text-light">How can Jarvis help you today?</h2>
-                    <p class="text-secondary mb-5">Ask any question — coding, explanations, writing, logic, or math.
-                        Powered by local Ollama.</p>
-
-                    <!-- Prompt Starter Suggestions -->
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="prompt-card" onclick="sendStarterPrompt('Software Engineering Apps')">
-                                <div class="fw-semibold text-success mb-1"><i class="fa-solid fa-bolt me-2"></i>Software
-                                    Engineering</div>
-                                <small class="text-secondary">Software Engineering Apps.</small>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="prompt-card"
-                                onclick="sendStarterPrompt('Write a Python script for web scraping with BeautifulSoup')">
-                                <div class="fw-semibold text-success mb-1"><i class="fa-solid fa-code me-2"></i>Python
-                                    Scraping</div>
-                                <small class="text-secondary">Write a Python script using BeautifulSoup and
-                                    Requests.</small>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="prompt-card"
-                                onclick="sendStarterPrompt('What are the top 5 best practices for Django security?')">
-                                <div class="fw-semibold text-success mb-1"><i
-                                        class="fa-solid fa-shield-halved me-2"></i>Django Security</div>
-                                <small class="text-secondary">What are the top security best practices for Django
-                                    applications?</small>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="prompt-card"
-                                onclick="sendStarterPrompt('Draft a professional tech project proposal email')">
-                                <div class="fw-semibold text-success mb-1"><i
-                                        class="fa-solid fa-paper-plane me-2"></i>Project Proposal</div>
-                                <small class="text-secondary">Draft a clean professional project proposal email.</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Chat Input Bar -->
-            <div class="chat-input-wrapper">
-                <form id="chatForm" onsubmit="handleSend(event)">
-                    {% csrf_token %}
-                    <input type="hidden" id="conversationId"
-                        value="{% if active_conversation %}{{ active_conversation.id }}{% endif %}">
-                    <div class="input-card">
-                        <textarea id="promptInput" class="chat-textarea" rows="1"
-                            placeholder="Type your message to Jarvis..." onkeydown="checkEnter(event)"></textarea>
-                        <button type="submit" class="btn-send" id="sendBtn">
-                            <i class="fa-solid fa-paper-plane"></i>
-                        </button>
-                    </div>
-                </form>
-                <div class="text-center text-secondary mt-2 fs-7"
-                    style="font-size: 0.75rem; color: #059669 !important;">
-                    Jarvis AI
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Scripts: Marked.js for Markdown & Highlight.js for Syntax Highlighting -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <!-- Custom Modular Frontend Script -->
-    <script src="{% static 'js/chat.js' %}"></script>
-</body>
-
-</html>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">✦</span><div><strong>JARVIS</strong><small>COMMAND CENTER</small></div></div>
+      <div class="nav-label">WORKSPACE</div>
+      <nav>
+        <a class="nav-item active" href="{% url 'index' %}"><span>⌂</span> Command center</a>
+        <a class="nav-item" href="#agents"><span>◈</span> Agents <em>4</em></a>
+        <a class="nav-item" href="#tasks"><span>✓</span> Tasks <em>3</em></a>
+        <a class="nav-item" href="#memory"><span>▦</span> Memory</a>
+        <a class="nav-item" href="#providers"><span>◌</span> Providers</a>
+      </nav>
+      <div class="nav-label recent-label">RECENT RUNS</div>
+      <div class="runs">
+        {% for thread in conversations|slice:":4" %}<a class="run" href="{% url 'conversation_detail' thread.id %}"><span class="run-dot"></span><span>{{ thread.title|truncatechars:25 }}</span></a>{% empty %}<span class="muted">No runs yet</span>{% endfor %}
+      </div>
+      <div class="sidebar-footer"><span class="status-dot"></span> Local runtime <b>READY</b></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div><span class="eyebrow">OPERATIONS / OVERVIEW</span><h1>Command center</h1></div><div class="top-actions"><span class="live"><i></i> SYSTEM ONLINE</span><button class="icon-btn" aria-label="Settings">⚙</button><div class="avatar">V</div></div></header>
+      <section class="metrics" id="tasks"><div class="metric"><span>ACTIVE AGENTS</span><strong>04</strong><small class="up">↑ 2 this week</small></div><div class="metric"><span>REQUESTS TODAY</span><strong>128</strong><small class="up">↑ 18.4%</small></div><div class="metric"><span>AVG LATENCY</span><strong>1.8<span>s</span></strong><small class="neutral">within target</small></div><div class="metric"><span>MEMORY INDEX</span><strong>92<span>%</span></strong><small class="up">healthy</small></div></section>
+      <section class="grid">
+        <article class="panel core-panel"><div class="panel-head"><div><span class="eyebrow">CORE RUNTIME</span><h2>Jarvis intelligence layer</h2></div><span class="pill green">● OPERATIONAL</span></div><div class="core-visual"><div class="orbit o1"></div><div class="orbit o2"></div><div class="core-node"><span>JARVIS</span><small>AI CORE · v0.3.0</small></div><div class="node n1">◈<small>REASONING</small></div><div class="node n2">⌁<small>MEMORY</small></div><div class="node n3">▣<small>TOOLS</small></div></div><div class="core-footer"><span>Provider <b>API gateway</b></span><span>Context <b>12 turns</b></span><span>Mode <b>Production-ready</b></span></div></article>
+        <article class="panel feed-panel"><div class="panel-head"><div><span class="eyebrow">EVENT STREAM</span><h2>Live intelligence feed</h2></div><span class="pill green">● LIVE</span></div><div class="feed"><div><i class="feed-icon cyan">⌁</i><p><b>Runtime health check passed</b><small>All services responding · just now</small></p><strong class="tag">OK</strong></div><div><i class="feed-icon purple">✦</i><p><b>Conversation memory indexed</b><small>Embedding pipeline ready · 2m ago</small></p><strong class="tag">INFO</strong></div><div><i class="feed-icon amber">⚡</i><p><b>AI gateway ready</b><small>Provider configuration loaded · 4m ago</small></p><strong class="tag">INFO</strong></div><div><i class="feed-icon red">!</i><p><b>2 tasks need attention</b><small>Review queued work before deploy</small></p><strong class="tag red-text">WARN</strong></div></div></article>
+        <article class="panel agents-panel" id="agents"><div class="panel-head"><div><span class="eyebrow">ORCHESTRATION</span><h2>Active agents</h2></div><a class="text-link" href="#">Manage →</a></div><div class="agent-list"><div><span class="agent-icon cyan">⌘</span><p><b>Coding agent</b><small>Writing & reviewing code</small></p><span class="state">● ACTIVE</span></div><div><span class="agent-icon purple">⌕</span><p><b>Research agent</b><small>Gathering project context</small></p><span class="state">● STANDBY</span></div><div><span class="agent-icon amber">▤</span><p><b>Task agent</b><small>Managing work queue</small></p><span class="state">● STANDBY</span></div></div></article>
+        <article class="panel timeline-panel"><div class="panel-head"><div><span class="eyebrow">EXECUTION</span><h2>Mission timeline</h2></div><span class="muted">TODAY</span></div><div class="timeline"><div><b>Runtime health check</b><small>Completed · 09:10</small><span class="done">✓</span></div><div><b>Index conversation memory</b><small>In progress · 09:24</small><span class="current">◌</span></div><div><b>Review deployment checklist</b><small>Queued · 10:00</small><span class="pending">○</span></div></div></article>
+        <article class="panel chat-panel" id="memory"><div class="panel-head"><div><span class="eyebrow">ASSISTANT CONSOLE</span><h2>{% if active_conversation %}{{ active_conversation.title }}{% else %}Start a work session{% endif %}</h2></div><span class="pill">LOCAL / PRIVATE</span></div><div class="messages-container" id="messagesContainer">{% if chat_messages %}{% for msg in chat_messages %}<div class="msg-wrapper {% if msg.sender == 'user' %}user{% else %}ai{% endif %}"><div class="avatar">{% if msg.sender == 'user' %}V{% else %}✦{% endif %}</div><div class="msg-bubble"><div class="msg-content"><template class="raw-content">{{ msg.content }}</template></div><div class="msg-time">{{ msg.created_at|date:'H:i' }}</div></div></div>{% endfor %}{% else %}<div class="empty-chat"><div class="empty-icon">✦</div><h3>What are we building today?</h3><p>Ask Jarvis to inspect code, plan a feature, debug a system, or run an engineering workflow.</p><div class="starter-row"><button onclick="sendStarterPrompt('Inspect this project and suggest the highest-impact engineering improvements')">Inspect project</button><button onclick="sendStarterPrompt('Help me design a production-ready backend architecture')">Design backend</button><button onclick="sendStarterPrompt('Review my codebase for bugs and technical debt')">Review code</button></div></div>{% endif %}</div><div class="chat-input-wrapper"><form id="chatForm" onsubmit="handleSend(event)">{% csrf_token %}<input type="hidden" id="conversationId" value="{% if active_conversation %}{{ active_conversation.id }}{% endif %}"><div class="input-card"><textarea id="promptInput" rows="1" placeholder="Describe a task for Jarvis..." onkeydown="checkEnter(event)"></textarea><button class="btn-send" id="sendBtn" type="submit">↑</button></div></form><small class="input-hint">Enter to send · Shift + Enter for a new line</small></div></article>
+      </section>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script><script src="{% static 'js/chat.js' %}"></script>
+</body></html>

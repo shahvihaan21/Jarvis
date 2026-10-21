@@ -237,4 +237,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     scrollToBottom();
+    refreshRuntimeStatus();
 });
+
+async function refreshRuntimeStatus() {
+    try {
+        const response = await fetch('/api/health/');
+        const data = await response.json();
+        const status = document.querySelector('.live');
+        if (status && !data.ai_configured) status.innerHTML = '<i></i> AI SETUP REQUIRED';
+    } catch (error) {
+        const status = document.querySelector('.live');
+        if (status) status.innerHTML = '<i></i> DEGRADED';
+    }
+}

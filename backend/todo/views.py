@@ -1,48 +1,44 @@
 import json
 import logging
 from typing import Generator
-import ollama
+import os
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
+from django.db import connection
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, StreamingHttpResponse
 from .models import Conversation, ChatMessage
 
 logger = logging.getLogger(__name__)
 
-# Default preferred model fallback order
-DEFAULT_MODELS = ['jarvis-ft:latest', 'qwen3:1.7b', 'llama3.2:3b']
-_CACHED_MODEL = None
-MAX_HISTORY_TURNS = 12  # Bound context history to speed up Ollama generation
+MAX_HISTORY_TURNS = 12
 
-def get_ollama_model() -> str:
-    """Retrieve and cache the available Ollama model to avoid listing models on every request."""
-    global _CACHED_MODEL
-    if _CACHED_MODEL:
-        return _CACHED_MODEL
+def provider_config():
+    """Read an OpenAI-compatible provider at request time; no vendor SDK is required."""
+    return {
+        'base_url': os.getenv('AI_BASE_URL', 'https://api.openai.com/v1').rstrip('/'),
+        'api_key': os.getenv('AI_API_KEY', ''),
+        'model': os.getenv('AI_MODEL', 'gpt-4o-mini'),
+    }
 
+def generate_reply(messages):
+    config = provider_config()
+    if not config['api_key']:
+        return ('AI provider is not configured. Set AI_API_KEY, AI_BASE_URL, and AI_MODEL in your environment, '
+                'then restart the backend.')
+    payload = json.dumps({'model': config['model'], 'messages': messages, 'temperature': 0.2}).encode()
+    request = Request(f"{config['base_url']}/chat/completions", data=payload, method='POST', headers={
+        'Authorization': f"Bearer {config['api_key']}", 'Content-Type': 'application/json'})
     try:
-        models_response = ollama.list()
-        available = []
-        if hasattr(models_response, 'models') and models_response.models:
-            available = [getattr(m, 'model', getattr(m, 'name', '')) for m in models_response.models]
-        elif isinstance(models_response, dict) and models_response.get('models'):
-            available = [m.get('name', '') for m in models_response['models']]
-
-        for pref in DEFAULT_MODELS:
-            if pref in available or any(pref in name for name in available):
-                _CACHED_MODEL = pref
-                return _CACHED_MODEL
-
-        if available:
-            _CACHED_MODEL = available[0]
-            return _CACHED_MODEL
-    except Exception as e:
-        logger.warning(f"Could not query Ollama models: {e}")
-
-    _CACHED_MODEL = "jarvis-ft:latest"
-    return _CACHED_MODEL
+        with urlopen(request, timeout=90) as response:
+            result = json.loads(response.read().decode('utf-8'))
+        return result['choices'][0]['message']['content']
+    except (HTTPError, URLError, KeyError, IndexError, json.JSONDecodeError) as error:
+        logger.exception('AI provider request failed')
+        return f'AI provider request failed: {error}. Check AI_BASE_URL, AI_API_KEY, and AI_MODEL.'
 
 def build_messages_payload(history_messages) -> list:
-    """Construct formatted message history for Ollama with bounded recent turns for optimal speed."""
+    """Construct a bounded, provider-neutral chat payload."""
     messages = [{
         'role': 'system',
         'content': (
@@ -70,8 +66,44 @@ def index(request, conversation_id=None):
         'conversations': conversations,
         'active_conversation': active_conversation,
         'chat_messages': chat_messages,
-        'model_name': get_ollama_model(),
+        'model_name': provider_config()['model'],
     })
+
+def health_api(request):
+    """Small operational probe used by monitors and the command center."""
+    database = 'ok'
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+    except Exception:
+        database = 'error'
+    return JsonResponse({
+        'status': 'ok' if database == 'ok' else 'degraded',
+        'service': 'jarvis-api',
+        'database': database,
+        'provider': provider_config()['base_url'],
+        'model': provider_config()['model'],
+        'ai_configured': bool(provider_config()['api_key']),
+        'conversations': Conversation.objects.count(),
+        'messages': ChatMessage.objects.count(),
+    }, status=200 if database == 'ok' else 503)
+
+def export_conversation(request, conversation_id):
+    """Export a conversation as JSON for debugging, handoff, or archival."""
+    conversation = get_object_or_404(Conversation, id=conversation_id)
+    payload = {
+        'id': str(conversation.id), 'title': conversation.title,
+        'created_at': conversation.created_at.isoformat(),
+        'updated_at': conversation.updated_at.isoformat(),
+        'messages': [
+            {'id': str(message.id), 'sender': message.sender, 'content': message.content,
+             'created_at': message.created_at.isoformat()}
+            for message in conversation.messages.all()
+        ],
+    }
+    response = JsonResponse(payload, json_dumps_params={'indent': 2})
+    response['Content-Disposition'] = f'attachment; filename="jarvis-{conversation.id}.json"'
+    return response
 
 def new_chat(request):
     return redirect('index')
@@ -112,7 +144,7 @@ def chat_api(request):
         # Retrieve recent history efficiently
         history = list(conversation.messages.order_by('created_at'))
         messages_payload = build_messages_payload(history)
-        model_name = get_ollama_model()
+        reply = generate_reply(messages_payload)
 
         if stream_requested:
             def stream_generator() -> Generator[str, None, None]:
@@ -121,12 +153,8 @@ def chat_api(request):
                 yield f"data: {json.dumps({'type': 'init', 'conversation_id': str(conversation.id), 'conversation_title': conversation.title, 'user_time': user_msg.created_at.strftime('%H:%M')})}\n\n"
                 
                 try:
-                    stream = ollama.chat(model=model_name, messages=messages_payload, stream=True)
-                    for chunk in stream:
-                        delta = chunk.get('message', {}).get('content', '') if isinstance(chunk, dict) else getattr(chunk.message, 'content', '')
-                        if delta:
-                            full_reply.append(delta)
-                            yield f"data: {json.dumps({'type': 'chunk', 'delta': delta})}\n\n"
+                    full_reply.append(reply)
+                    yield f"data: {json.dumps({'type': 'chunk', 'delta': reply})}\n\n"
                     
                     complete_text = "".join(full_reply)
                     ai_msg = ChatMessage.objects.create(
@@ -146,8 +174,7 @@ def chat_api(request):
             return response
 
         # Non-streaming fallback
-        res = ollama.chat(model=model_name, messages=messages_payload, stream=False)
-        content = res.get('message', {}).get('content', '') if isinstance(res, dict) else res.message.content
+        content = reply
         
         ai_msg = ChatMessage.objects.create(
             conversation=conversation,
