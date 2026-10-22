@@ -81,17 +81,27 @@ function playJarvisTone(type = 'tick') {
     if (!AudioEngine) return;
     audioContext ||= new AudioEngine();
     if (audioContext.state === 'suspended') audioContext.resume();
-    const oscillator = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    const frequencies = { tick: 520, confirm: 880, warning: 180, boot: 660 };
-    oscillator.frequency.value = frequencies[type] || frequencies.tick;
-    oscillator.type = type === 'warning' ? 'sawtooth' : 'sine';
-    gain.gain.setValueAtTime(.0001, audioContext.currentTime);
-    gain.gain.exponentialRampToValueAtTime(type === 'warning' ? .035 : .055, audioContext.currentTime + .015);
-    gain.gain.exponentialRampToValueAtTime(.0001, audioContext.currentTime + (type === 'boot' ? .32 : .16));
-    oscillator.connect(gain).connect(audioContext.destination);
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + .35);
+    const patterns = { tick: [[520, 0, .1]], confirm: [[660, 0, .12], [990, .08, .2]], warning: [[240, 0, .18], [170, .1, .26]], boot: [[330, 0, .16], [520, .12, .18], [780, .25, .3]] };
+    const pattern = patterns[type] || patterns.tick;
+    pattern.forEach(([frequency, offset, duration]) => {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const filter = audioContext.createBiquadFilter();
+        const start = audioContext.currentTime + offset;
+        oscillator.frequency.setValueAtTime(frequency, start);
+        oscillator.frequency.exponentialRampToValueAtTime(frequency * (type === 'warning' ? .72 : 1.04), start + duration);
+        oscillator.type = type === 'warning' ? 'sawtooth' : 'sine';
+        filter.type = 'lowpass';
+        filter.frequency.value = type === 'warning' ? 900 : 2200;
+        gain.gain.setValueAtTime(.0001, start);
+        gain.gain.exponentialRampToValueAtTime(type === 'warning' ? .025 : .045, start + .012);
+        gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+        oscillator.connect(filter).connect(gain).connect(audioContext.destination);
+        oscillator.start(start);
+        oscillator.stop(start + duration + .03);
+    });
+    document.body.classList.add('sound-playing');
+    window.setTimeout(() => document.body.classList.remove('sound-playing'), 420);
 }
 
 function setupAudioControl() {
