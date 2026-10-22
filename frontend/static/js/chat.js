@@ -215,6 +215,7 @@ function startBootSequence() {
     const finish = () => {
         if (finished) return;
         finished = true;
+        document.body.classList.add('system-ready');
         screen.classList.add('complete');
         window.setTimeout(() => screen.remove(), 800);
     };
