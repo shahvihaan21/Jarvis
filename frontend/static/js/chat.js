@@ -72,6 +72,52 @@ let isListening = false;
 let speakReplies = true;
 let commandPalette = null;
 let previousRuntimeState = null;
+let audioEnabled = false;
+let audioContext = null;
+
+function playJarvisTone(type = 'tick') {
+    if (!audioEnabled) return;
+    audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const frequencies = { tick: 520, confirm: 880, warning: 180, boot: 660 };
+    oscillator.frequency.value = frequencies[type] || frequencies.tick;
+    oscillator.type = type === 'warning' ? 'sawtooth' : 'sine';
+    gain.gain.setValueAtTime(.0001, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(type === 'warning' ? .035 : .055, audioContext.currentTime + .015);
+    gain.gain.exponentialRampToValueAtTime(.0001, audioContext.currentTime + (type === 'boot' ? .32 : .16));
+    oscillator.connect(gain).connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + .35);
+}
+
+function setupAudioControl() {
+    const host = document.querySelector('.top-status');
+    if (!host || document.getElementById('audioToggle')) return;
+    const button = document.createElement('button');
+    button.id = 'audioToggle';
+    button.className = 'audio-toggle';
+    button.type = 'button';
+    button.setAttribute('aria-pressed', 'false');
+    button.textContent = '◌ AUDIO OFF';
+    button.title = 'Enable Jarvis interface sound';
+    button.onclick = () => {
+        audioEnabled = !audioEnabled;
+        if (audioEnabled) {
+            audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+            audioContext.resume();
+            button.textContent = '◉ AUDIO ON';
+            button.classList.add('enabled');
+            button.setAttribute('aria-pressed', 'true');
+            playJarvisTone('confirm');
+        } else {
+            button.textContent = '◌ AUDIO OFF';
+            button.classList.remove('enabled');
+            button.setAttribute('aria-pressed', 'false');
+        }
+    };
+    host.insertBefore(button, host.firstChild);
+}
 
 function showJarvisToast(message, tone = 'info') {
     let toast = document.getElementById('jarvisToast');
@@ -89,6 +135,7 @@ function showJarvisToast(message, tone = 'info') {
 }
 
 function setupProductivityFeatures() {
+    setupAudioControl();
     const coreVisual = document.querySelector('.core-visual');
     if (coreVisual && !coreVisual.querySelector('.holo-avatar')) {
         const hologram = document.createElement('div');
@@ -108,7 +155,7 @@ function setupProductivityFeatures() {
     document.body.appendChild(commandPalette);
     commandPalette.addEventListener('click', (event) => {
         const action = event.target.closest('[data-command]')?.dataset.command;
-        if (action) runCommand(action);
+        if (action) { playJarvisTone('tick'); runCommand(action); }
         if (event.target === commandPalette) closeCommandPalette();
     });
     document.getElementById('commandSearch').addEventListener('input', (event) => {
@@ -120,6 +167,7 @@ function setupProductivityFeatures() {
         if (event.key === 'Escape' && commandPalette && !commandPalette.classList.contains('hidden')) closeCommandPalette();
         if (event.key.toLowerCase() === 'f' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) runCommand('focus');
     });
+    document.querySelectorAll('button').forEach(button => button.addEventListener('click', () => playJarvisTone('tick')));
 }
 function toggleCommandPalette() { commandPalette?.classList.toggle('hidden'); if (commandPalette && !commandPalette.classList.contains('hidden')) document.getElementById('commandSearch').focus(); }
 function closeCommandPalette() { commandPalette?.classList.add('hidden'); }
@@ -143,6 +191,7 @@ function startBootSequence() {
     skip.onclick = finish;
     const timer = window.setInterval(() => {
         step += 1;
+        playJarvisTone(step >= steps.length ? 'confirm' : 'boot');
         if (progress) progress.style.width = `${Math.min(step, steps.length) * 25}%`;
         if (log) log.textContent = steps[Math.min(step, steps.length) - 1];
         if (step >= steps.length) {
@@ -422,6 +471,7 @@ async function refreshRuntimeStatus() {
         const healthy = response.ok && data.status === 'ok';
         const runtimeState = healthy ? (data.ai_configured ? 'online' : 'setup') : 'degraded';
         if (previousRuntimeState && previousRuntimeState !== runtimeState) {
+            playJarvisTone(runtimeState === 'online' ? 'confirm' : 'warning');
             showJarvisToast(runtimeState === 'online' ? 'AI gateway connection restored.' : 'Runtime status requires attention.', runtimeState === 'online' ? 'success' : 'warning');
         }
         previousRuntimeState = runtimeState;
