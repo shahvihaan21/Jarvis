@@ -535,6 +535,8 @@ async function handleSend(e) {
 document.addEventListener('DOMContentLoaded', () => {
     // The dashboard must be usable even if an intro/audio animation is interrupted.
     document.body.classList.add('system-ready');
+    const referenceVisual = document.querySelector('.full-blueprint');
+    if (referenceVisual) referenceVisual.src = '/static/img/jarvis-reference.jpg';
     const deck = document.querySelector('.tactical-main');
     if (deck) Object.assign(deck.style, { display: 'block', position: 'relative', opacity: '1', visibility: 'visible', transform: 'none', filter: 'none' });
     startBootSequence();
