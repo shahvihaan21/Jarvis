@@ -229,6 +229,12 @@ function startBootSequence() {
     const log = document.getElementById('bootLog');
     const skip = document.getElementById('bootSkip');
     if (!screen) return;
+    window.setTimeout(() => {
+        if (!document.body.classList.contains('system-ready')) {
+            document.body.classList.add('system-ready');
+            screen.classList.add('complete');
+        }
+    }, 2800);
     const steps = ['CALIBRATING REACTOR...', 'CONNECTING MEMORY INDEX...', 'VERIFYING AI GATEWAY...', 'COMMAND CENTER READY'];
     let step = 0;
     let finished = false;
