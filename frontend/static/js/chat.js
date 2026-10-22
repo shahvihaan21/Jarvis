@@ -206,6 +206,13 @@ function setupProductivityFeatures() {
         module.innerHTML = '<span class="gold-emblem">J</span><i class="gold-line line-one"></i><i class="gold-line line-two"></i><i class="gold-line line-three"></i><b>TOOLS LINK <em>READY</em></b>';
         core.appendChild(module);
     }
+    if (core && !core.querySelector('.armor-schematic')) {
+        const schematic = document.createElement('img');
+        schematic.className = 'armor-schematic';
+        schematic.src = '/static/img/jarvis-armor-schematic.svg';
+        schematic.alt = 'Jarvis tactical armor schematic';
+        core.appendChild(schematic);
+    }
     const coreVisual = document.querySelector('.core-visual');
     if (coreVisual && !coreVisual.querySelector('.holo-avatar')) {
         const hologram = document.createElement('div');
