@@ -290,16 +290,21 @@ function setupVoiceControls() {
     const panel = document.querySelector('.chat-panel, .chat-deck');
     const messages = document.getElementById('messagesContainer');
     if (!panel || !messages) return;
+    let voiceButton, speakButton;
+    if (document.getElementById('voiceToggle')) {
+        voiceButton = document.getElementById('voiceToggle');
+        speakButton = document.getElementById('speakToggle');
+    }
     const toolbar = document.createElement('div');
     toolbar.className = 'voice-toolbar';
     toolbar.innerHTML = '<button class="voice-toggle" id="voiceToggle" type="button" aria-pressed="false">🎙 <span>Voice</span></button>' +
         '<button class="voice-toggle active" id="speakToggle" type="button" aria-pressed="true">🔊 <span>Speak</span></button>' +
         '<span class="voice-status" id="voiceStatus" role="status" aria-live="polite">Voice input is ready when you are.</span>';
-    panel.querySelector('.panel-head').appendChild(toolbar);
+    if (!voiceButton) (panel.querySelector('.panel-head') || panel.querySelector('.voice-actions') || panel).appendChild(toolbar);
 
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const voiceButton = document.getElementById('voiceToggle');
-    const speakButton = document.getElementById('speakToggle');
+    voiceButton ||= document.getElementById('voiceToggle');
+    speakButton ||= document.getElementById('speakToggle');
     if (!Recognition) {
         voiceButton.disabled = true;
         setVoiceStatus('Voice input is not supported in this browser. Try Chrome or Edge.');
