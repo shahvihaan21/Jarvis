@@ -74,6 +74,23 @@ let commandPalette = null;
 let previousRuntimeState = null;
 let audioEnabled = false;
 let audioContext = null;
+let themeAudio = null;
+
+function setThemeAudio(enabled) {
+    if (!themeAudio) {
+        themeAudio = new Audio('/static/audio/jarvis-theme.mp3');
+        themeAudio.loop = true;
+        themeAudio.volume = 0.28;
+        themeAudio.preload = 'auto';
+    }
+    if (enabled) {
+        themeAudio.play().then(() => document.body.classList.add('theme-playing')).catch(() => showJarvisToast('Click AUDIO ON to start the Jarvis theme.', 'warning'));
+    } else {
+        themeAudio.pause();
+        themeAudio.currentTime = 0;
+        document.body.classList.remove('theme-playing');
+    }
+}
 
 function playJarvisTone(type = 'tick') {
     if (!audioEnabled) return;
@@ -120,13 +137,14 @@ function setupAudioControl() {
             button.textContent = '◉ AUDIO ON';
             button.classList.add('enabled');
             document.body.classList.add('audio-active');
+            setThemeAudio(true);
             button.setAttribute('aria-pressed', 'true');
             playJarvisTone('boot');
         }
         document.removeEventListener('pointerdown', unlock, true);
         document.removeEventListener('keydown', unlock, true);
     };
-    document.addEventListener('pointerdown', unlock, true);
+    document.addEventListener('pointerdown', (event) => { if (!event.target.closest('#audioToggle')) unlock(); }, true);
     document.addEventListener('keydown', unlock, true);
     button.onclick = () => {
         audioEnabled = !audioEnabled;
@@ -137,12 +155,14 @@ function setupAudioControl() {
             button.textContent = '◉ AUDIO ON';
             button.classList.add('enabled');
             document.body.classList.add('audio-active');
+            setThemeAudio(true);
             button.setAttribute('aria-pressed', 'true');
             playJarvisTone('confirm');
         } else {
             button.textContent = '◌ AUDIO OFF';
             button.classList.remove('enabled');
             document.body.classList.remove('audio-active');
+            setThemeAudio(false);
             button.setAttribute('aria-pressed', 'false');
         }
     };
