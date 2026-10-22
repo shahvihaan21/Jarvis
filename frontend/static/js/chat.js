@@ -77,7 +77,10 @@ let audioContext = null;
 
 function playJarvisTone(type = 'tick') {
     if (!audioEnabled) return;
-    audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+    const AudioEngine = window.AudioContext || window.webkitAudioContext;
+    if (!AudioEngine) return;
+    audioContext ||= new AudioEngine();
+    if (audioContext.state === 'suspended') audioContext.resume();
     const oscillator = audioContext.createOscillator();
     const gain = audioContext.createGain();
     const frequencies = { tick: 520, confirm: 880, warning: 180, boot: 660 };
@@ -101,18 +104,35 @@ function setupAudioControl() {
     button.setAttribute('aria-pressed', 'false');
     button.textContent = '◌ AUDIO OFF';
     button.title = 'Enable Jarvis interface sound';
+    const unlock = () => {
+        if (!audioEnabled) {
+            audioEnabled = true;
+            button.textContent = '◉ AUDIO ON';
+            button.classList.add('enabled');
+            document.body.classList.add('audio-active');
+            button.setAttribute('aria-pressed', 'true');
+            playJarvisTone('boot');
+        }
+        document.removeEventListener('pointerdown', unlock, true);
+        document.removeEventListener('keydown', unlock, true);
+    };
+    document.addEventListener('pointerdown', unlock, true);
+    document.addEventListener('keydown', unlock, true);
     button.onclick = () => {
         audioEnabled = !audioEnabled;
         if (audioEnabled) {
-            audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
-            audioContext.resume();
+            const AudioEngine = window.AudioContext || window.webkitAudioContext;
+            if (AudioEngine) audioContext ||= new AudioEngine();
+            audioContext?.resume();
             button.textContent = '◉ AUDIO ON';
             button.classList.add('enabled');
+            document.body.classList.add('audio-active');
             button.setAttribute('aria-pressed', 'true');
             playJarvisTone('confirm');
         } else {
             button.textContent = '◌ AUDIO OFF';
             button.classList.remove('enabled');
+            document.body.classList.remove('audio-active');
             button.setAttribute('aria-pressed', 'false');
         }
     };
