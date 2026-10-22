@@ -200,6 +200,12 @@ function setupProductivityFeatures() {
         portrait.alt = 'Jarvis connected cybernetic core';
         core.appendChild(portrait);
     }
+    if (core && !core.querySelector('.gold-module')) {
+        const module = document.createElement('div');
+        module.className = 'gold-module';
+        module.innerHTML = '<span class="gold-emblem">J</span><i class="gold-line line-one"></i><i class="gold-line line-two"></i><i class="gold-line line-three"></i><b>TOOLS LINK <em>READY</em></b>';
+        core.appendChild(module);
+    }
     const coreVisual = document.querySelector('.core-visual');
     if (coreVisual && !coreVisual.querySelector('.holo-avatar')) {
         const hologram = document.createElement('div');
@@ -517,6 +523,8 @@ async function handleSend(e) {
 document.addEventListener('DOMContentLoaded', () => {
     // The dashboard must be usable even if an intro/audio animation is interrupted.
     document.body.classList.add('system-ready');
+    const deck = document.querySelector('.tactical-main');
+    if (deck) Object.assign(deck.style, { display: 'block', position: 'relative', opacity: '1', visibility: 'visible', transform: 'none', filter: 'none' });
     startBootSequence();
     setupProductivityFeatures();
     // Initial render of existing message bubbles from backend
