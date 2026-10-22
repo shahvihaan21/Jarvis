@@ -79,9 +79,14 @@ let themeAudio = null;
 function setThemeAudio(enabled) {
     if (!themeAudio) {
         themeAudio = new Audio('/static/audio/jarvis-theme.mp3');
-        themeAudio.loop = true;
+        themeAudio.loop = false;
         themeAudio.volume = 0.28;
         themeAudio.preload = 'auto';
+        themeAudio.addEventListener('ended', () => {
+            document.body.classList.remove('theme-playing');
+            const button = document.getElementById('audioToggle');
+            if (button) button.textContent = '◌ AUDIO READY';
+        }, { once: true });
     }
     if (enabled) {
         themeAudio.play().then(() => document.body.classList.add('theme-playing')).catch(() => showJarvisToast('Click AUDIO ON to start the Jarvis theme.', 'warning'));
