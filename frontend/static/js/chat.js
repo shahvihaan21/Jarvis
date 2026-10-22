@@ -192,6 +192,14 @@ function showJarvisToast(message, tone = 'info') {
 
 function setupProductivityFeatures() {
     setupAudioControl();
+    const core = document.querySelector('.tactical-core');
+    if (core && !core.querySelector('.jarvis-portrait')) {
+        const portrait = document.createElement('img');
+        portrait.className = 'jarvis-portrait';
+        portrait.src = '/static/img/jarvis-avatar.svg';
+        portrait.alt = 'Jarvis connected cybernetic core';
+        core.appendChild(portrait);
+    }
     const coreVisual = document.querySelector('.core-visual');
     if (coreVisual && !coreVisual.querySelector('.holo-avatar')) {
         const hologram = document.createElement('div');
