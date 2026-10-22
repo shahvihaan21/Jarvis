@@ -70,6 +70,36 @@ function escapeHtml(text) {
 let speechRecognition = null;
 let isListening = false;
 let speakReplies = true;
+let commandPalette = null;
+
+function setupProductivityFeatures() {
+    const input = document.getElementById('promptInput');
+    if (input) input.addEventListener('input', () => {
+        input.style.height = 'auto';
+        input.style.height = `${Math.min(input.scrollHeight, 150)}px`;
+    });
+    commandPalette = document.createElement('div');
+    commandPalette.className = 'command-palette hidden';
+    commandPalette.innerHTML = `<div class="command-card" role="dialog" aria-modal="true" aria-label="Jarvis command palette"><div class="command-search"><span>⌘</span><input id="commandSearch" placeholder="Search Jarvis actions..." autocomplete="off"></div><div class="command-items"><button data-command="focus">◉ <span>Focus workspace</span><kbd>F</kbd></button><button data-command="voice">🎙 <span>Toggle voice input</span><kbd>V</kbd></button><button data-command="new">＋ <span>Start new session</span><kbd>N</kbd></button><button data-command="top">↑ <span>Scroll to latest</span><kbd>↵</kbd></button></div><small>Press Esc to close</small></div>`;
+    document.body.appendChild(commandPalette);
+    commandPalette.addEventListener('click', (event) => {
+        const action = event.target.closest('[data-command]')?.dataset.command;
+        if (action) runCommand(action);
+        if (event.target === commandPalette) closeCommandPalette();
+    });
+    document.getElementById('commandSearch').addEventListener('input', (event) => {
+        const query = event.target.value.toLowerCase();
+        document.querySelectorAll('.command-items button').forEach(button => { button.hidden = !button.textContent.toLowerCase().includes(query); });
+    });
+    document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); toggleCommandPalette(); }
+        if (event.key === 'Escape' && commandPalette && !commandPalette.classList.contains('hidden')) closeCommandPalette();
+        if (event.key.toLowerCase() === 'f' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) runCommand('focus');
+    });
+}
+function toggleCommandPalette() { commandPalette?.classList.toggle('hidden'); if (commandPalette && !commandPalette.classList.contains('hidden')) document.getElementById('commandSearch').focus(); }
+function closeCommandPalette() { commandPalette?.classList.add('hidden'); }
+function runCommand(action) { closeCommandPalette(); if (action === 'focus') document.body.classList.toggle('focus-mode'); if (action === 'voice') document.getElementById('voiceToggle')?.click(); if (action === 'new') window.location.href = '/'; if (action === 'top') scrollToBottom(); }
 
 function startBootSequence() {
     const screen = document.getElementById('bootScreen');
@@ -342,6 +372,7 @@ async function handleSend(e) {
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
     startBootSequence();
+    setupProductivityFeatures();
     // Initial render of existing message bubbles from backend
     document.querySelectorAll('.msg-content').forEach(el => {
         const rawEl = el.querySelector('.raw-content');
@@ -357,6 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function refreshRuntimeStatus() {
+    const startedAt = performance.now();
     try {
         const response = await fetch('/api/health/');
         const data = await response.json();
@@ -375,6 +407,10 @@ async function refreshRuntimeStatus() {
             runtimePill.classList.toggle('green', healthy);
             runtimePill.textContent = healthy ? '● OPERATIONAL' : '● DEGRADED';
         }
+        const metrics = document.querySelectorAll('.metrics .metric');
+        if (metrics[0] && data.conversations !== undefined) metrics[0].querySelector('strong').textContent = String(data.conversations).padStart(2, '0');
+        if (metrics[1] && data.messages !== undefined) metrics[1].querySelector('strong').textContent = String(data.messages);
+        if (metrics[2]) metrics[2].querySelector('strong').innerHTML = `${((performance.now() - startedAt) / 1000).toFixed(2)}<span>s</span>`;
     } catch (error) {
         const status = document.querySelector('.live');
         if (status) status.innerHTML = '<i></i> DEGRADED';
