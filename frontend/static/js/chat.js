@@ -332,9 +332,26 @@ async function refreshRuntimeStatus() {
         const response = await fetch('/api/health/');
         const data = await response.json();
         const status = document.querySelector('.live');
-        if (status && !data.ai_configured) status.innerHTML = '<i></i> AI SETUP REQUIRED';
+        const footerStatus = document.querySelector('.sidebar-footer b');
+        const runtimePill = document.querySelector('.core-panel .pill');
+        const healthy = response.ok && data.status === 'ok';
+        document.body.classList.toggle('runtime-degraded', !healthy);
+        if (status) {
+            status.innerHTML = healthy
+                ? (data.ai_configured ? '<i></i> SYSTEM ONLINE' : '<i></i> AI SETUP REQUIRED')
+                : '<i></i> SYSTEM DEGRADED';
+        }
+        if (footerStatus) footerStatus.textContent = healthy ? 'READY' : 'CHECK';
+        if (runtimePill) {
+            runtimePill.classList.toggle('green', healthy);
+            runtimePill.textContent = healthy ? '● OPERATIONAL' : '● DEGRADED';
+        }
     } catch (error) {
         const status = document.querySelector('.live');
         if (status) status.innerHTML = '<i></i> DEGRADED';
+        document.body.classList.add('runtime-degraded');
     }
 }
+
+// Keep the command center synchronized with the backend while it is open.
+setInterval(refreshRuntimeStatus, 10000);
