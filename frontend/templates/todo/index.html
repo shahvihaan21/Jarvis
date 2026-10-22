@@ -9,6 +9,17 @@
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body data-ai-model="{{ model_name }}">
+  <section class="boot-screen" id="bootScreen" aria-label="Jarvis startup sequence">
+    <div class="boot-grid"></div><div class="boot-scanline"></div>
+    <div class="boot-content">
+      <div class="boot-kicker">STARK INDUSTRIES // PRIVATE SYSTEM</div>
+      <div class="reactor"><span class="reactor-ring ring-a"></span><span class="reactor-ring ring-b"></span><span class="reactor-ring ring-c"></span><span class="reactor-core">J</span></div>
+      <h1>JARVIS</h1><p class="boot-subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</p>
+      <div class="boot-progress"><span id="bootProgress"></span></div>
+      <div class="boot-log" id="bootLog" aria-live="polite">INITIALIZING CORE...</div>
+      <button class="boot-skip" id="bootSkip" type="button">SKIP INTRO <span>↵</span></button>
+    </div>
+  </section>
   <div class="shell">
     <aside class="sidebar">
       <div class="brand"><span class="brand-mark">✦</span><div><strong>JARVIS</strong><small>COMMAND CENTER</small></div></div>

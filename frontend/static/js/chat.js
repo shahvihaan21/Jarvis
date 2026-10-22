@@ -71,6 +71,34 @@ let speechRecognition = null;
 let isListening = false;
 let speakReplies = true;
 
+function startBootSequence() {
+    const screen = document.getElementById('bootScreen');
+    const progress = document.getElementById('bootProgress');
+    const log = document.getElementById('bootLog');
+    const skip = document.getElementById('bootSkip');
+    if (!screen) return;
+    const steps = ['CALIBRATING REACTOR...', 'CONNECTING MEMORY INDEX...', 'VERIFYING AI GATEWAY...', 'COMMAND CENTER READY'];
+    let step = 0;
+    let finished = false;
+    const finish = () => {
+        if (finished) return;
+        finished = true;
+        screen.classList.add('complete');
+        window.setTimeout(() => screen.remove(), 800);
+    };
+    skip.onclick = finish;
+    const timer = window.setInterval(() => {
+        step += 1;
+        if (progress) progress.style.width = `${Math.min(step, steps.length) * 25}%`;
+        if (log) log.textContent = steps[Math.min(step, steps.length) - 1];
+        if (step >= steps.length) {
+            window.clearInterval(timer);
+            window.setTimeout(finish, 420);
+        }
+    }, 480);
+    window.addEventListener('keydown', (event) => { if (event.key === 'Escape') finish(); }, { once: true });
+}
+
 function setupVoiceControls() {
     const panel = document.querySelector('.chat-panel');
     const messages = document.getElementById('messagesContainer');
@@ -313,6 +341,7 @@ async function handleSend(e) {
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
+    startBootSequence();
     // Initial render of existing message bubbles from backend
     document.querySelectorAll('.msg-content').forEach(el => {
         const rawEl = el.querySelector('.raw-content');
