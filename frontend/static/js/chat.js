@@ -501,6 +501,8 @@ async function handleSend(e) {
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
+    // The dashboard must be usable even if an intro/audio animation is interrupted.
+    document.body.classList.add('system-ready');
     startBootSequence();
     setupProductivityFeatures();
     // Initial render of existing message bubbles from backend
