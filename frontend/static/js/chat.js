@@ -67,6 +67,90 @@ function escapeHtml(text) {
     return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+let speechRecognition = null;
+let isListening = false;
+let speakReplies = true;
+
+function setupVoiceControls() {
+    const panel = document.querySelector('.chat-panel');
+    const messages = document.getElementById('messagesContainer');
+    if (!panel || !messages) return;
+    const toolbar = document.createElement('div');
+    toolbar.className = 'voice-toolbar';
+    toolbar.innerHTML = '<button class="voice-toggle" id="voiceToggle" type="button" aria-pressed="false">🎙 <span>Voice</span></button>' +
+        '<button class="voice-toggle active" id="speakToggle" type="button" aria-pressed="true">🔊 <span>Speak</span></button>' +
+        '<span class="voice-status" id="voiceStatus" role="status" aria-live="polite">Voice input is ready when you are.</span>';
+    panel.querySelector('.panel-head').appendChild(toolbar);
+
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const voiceButton = document.getElementById('voiceToggle');
+    const speakButton = document.getElementById('speakToggle');
+    if (!Recognition) {
+        voiceButton.disabled = true;
+        setVoiceStatus('Voice input is not supported in this browser. Try Chrome or Edge.');
+        return;
+    }
+    speechRecognition = new Recognition();
+    speechRecognition.continuous = true;
+    speechRecognition.interimResults = true;
+    speechRecognition.lang = document.documentElement.lang || 'en-US';
+    speechRecognition.onresult = (event) => {
+        const input = document.getElementById('promptInput');
+        let finalText = '';
+        let interimText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const text = event.results[i][0].transcript;
+            if (event.results[i].isFinal) finalText += text;
+            else interimText += text;
+        }
+        if (input && finalText) input.value = `${input.value} ${finalText}`.trim();
+        setVoiceStatus(interimText ? `Listening: ${interimText}` : 'Listening…');
+    };
+    speechRecognition.onerror = (event) => {
+        if (event.error !== 'aborted') setVoiceStatus(`Voice error: ${event.error}`);
+        stopListening();
+    };
+    speechRecognition.onend = () => { if (isListening) speechRecognition.start(); };
+    voiceButton.onclick = () => isListening ? stopListening() : startListening();
+    speakButton.onclick = () => {
+        speakReplies = !speakReplies;
+        speakButton.classList.toggle('active', speakReplies);
+        speakButton.setAttribute('aria-pressed', String(speakReplies));
+        if (!speakReplies) window.speechSynthesis?.cancel();
+    };
+}
+
+function setVoiceStatus(message) {
+    const status = document.getElementById('voiceStatus');
+    if (status) status.textContent = message;
+}
+
+function startListening() {
+    if (!speechRecognition) return;
+    isListening = true;
+    const button = document.getElementById('voiceToggle');
+    button.classList.add('active');
+    button.setAttribute('aria-pressed', 'true');
+    setVoiceStatus('Listening… speak your command.');
+    speechRecognition.start();
+}
+
+function stopListening() {
+    isListening = false;
+    const button = document.getElementById('voiceToggle');
+    if (button) { button.classList.remove('active'); button.setAttribute('aria-pressed', 'false'); }
+    setVoiceStatus('Voice input is ready when you are.');
+    speechRecognition?.stop();
+}
+
+function speakReply(text) {
+    if (!speakReplies || !window.speechSynthesis || !text) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text.replace(/[*_`#>\[\]]/g, ''));
+    utterance.rate = 1.02;
+    window.speechSynthesis.speak(utterance);
+}
+
 async function handleSend(e) {
     if (e) e.preventDefault();
     const input = document.getElementById('promptInput');
@@ -175,6 +259,7 @@ async function handleSend(e) {
                                 }
                                 scrollToBottom();
                             } else if (eventData.type === 'done') {
+                                speakReply(accumulatedText);
                                 if (eventData.ai_time && timeLabel) {
                                     timeLabel.innerText = eventData.ai_time;
                                     timeLabel.style.display = 'block';
@@ -204,6 +289,7 @@ async function handleSend(e) {
                     timeLabel.innerText = data.ai_message.created_at;
                     timeLabel.style.display = 'block';
                 }
+                speakReply(data.ai_message.content);
             } else {
                 if (msgContentEl) {
                     msgContentEl.innerHTML = `<div class="text-danger p-2">Error: ${escapeHtml(data.error || 'Failed to generate response.')}</div>`;
@@ -237,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     scrollToBottom();
+    setupVoiceControls();
     refreshRuntimeStatus();
 });
 

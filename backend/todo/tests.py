@@ -24,9 +24,7 @@ class ChatApiTests(TestCase):
         page = self.client.get("/")
         csrf_token = page.cookies["csrftoken"].value
 
-        with patch("todo.views.ollama.chat", return_value={
-            "message": {"content": "Hello, commander."}
-        }):
+        with patch("todo.views.generate_reply", return_value="Hello, commander."):
             response = self.client.post(
                 "/api/chat/",
                 data=json.dumps({"message": "Hello Jarvis", "stream": False}),
