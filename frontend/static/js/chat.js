@@ -73,6 +73,14 @@ let speakReplies = true;
 let commandPalette = null;
 
 function setupProductivityFeatures() {
+    const coreVisual = document.querySelector('.core-visual');
+    if (coreVisual && !coreVisual.querySelector('.holo-avatar')) {
+        const hologram = document.createElement('div');
+        hologram.className = 'holo-avatar';
+        hologram.setAttribute('aria-hidden', 'true');
+        hologram.innerHTML = '<span class="avatar-head"></span><span class="avatar-body"></span><i class="avatar-beam"></i><b class="holo-label label-top">NEURAL LINK <em>ACTIVE</em></b><b class="holo-label label-left">CORE LOAD <em>42%</em></b><b class="holo-label label-right">THREAT LEVEL <em>LOW</em></b>';
+        coreVisual.prepend(hologram);
+    }
     const input = document.getElementById('promptInput');
     if (input) input.addEventListener('input', () => {
         input.style.height = 'auto';
