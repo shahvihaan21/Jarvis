@@ -86,6 +86,7 @@ function setThemeAudio(enabled) {
             document.body.classList.remove('theme-playing');
             const button = document.getElementById('audioToggle');
             if (button) button.textContent = '◌ AUDIO READY';
+            showJarvisToast('Jarvis theme complete. Interface remains ready.', 'success');
         }, { once: true });
     }
     if (enabled) {
