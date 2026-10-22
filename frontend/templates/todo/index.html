@@ -22,7 +22,7 @@
   </section>
   <div class="shell">
     <aside class="sidebar">
-      <div class="brand"><span class="brand-mark">✦</span><div><strong>JARVIS</strong><small>COMMAND CENTER</small></div></div>
+      <div class="brand"><span class="brand-mark">✦</span><div><strong>JARVIS</strong><small>COMMAND CENTER</small></div></div><a class="new-mission" href="{% url 'new_chat' %}"><span>＋</span> NEW MISSION <kbd>⌘ N</kbd></a>
       <div class="nav-label">WORKSPACE</div>
       <nav>
         <a class="nav-item active" href="{% url 'index' %}"><span>⌂</span> Command center</a>
@@ -35,7 +35,7 @@
       <div class="runs">
         {% for thread in conversations|slice:":4" %}<a class="run" href="{% url 'conversation_detail' thread.id %}"><span class="run-dot"></span><span>{{ thread.title|truncatechars:25 }}</span></a>{% empty %}<span class="muted">No runs yet</span>{% endfor %}
       </div>
-      <div class="sidebar-footer"><span class="status-dot"></span> Local runtime <b>READY</b></div>
+      <div class="sidebar-footer"><div><span class="status-dot"></span> Local runtime <b>READY</b></div><small>Press <kbd>⌘ K</kbd> for commands</small></div>
     </aside>
     <main class="main">
       <header class="topbar"><div><span class="eyebrow">OPERATIONS / OVERVIEW</span><h1>Command center</h1></div><div class="top-actions"><span class="live"><i></i> SYSTEM ONLINE</span><button class="icon-btn" aria-label="Settings">⚙</button><div class="avatar">V</div></div></header>
