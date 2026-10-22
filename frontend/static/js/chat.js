@@ -71,6 +71,22 @@ let speechRecognition = null;
 let isListening = false;
 let speakReplies = true;
 let commandPalette = null;
+let previousRuntimeState = null;
+
+function showJarvisToast(message, tone = 'info') {
+    let toast = document.getElementById('jarvisToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'jarvisToast';
+        toast.className = 'jarvis-toast';
+        document.body.appendChild(toast);
+    }
+    toast.className = `jarvis-toast ${tone}`;
+    toast.innerHTML = `<i></i><span>${escapeHtml(message)}</span>`;
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    window.clearTimeout(toast.hideTimer);
+    toast.hideTimer = window.setTimeout(() => toast.classList.remove('visible'), 3600);
+}
 
 function setupProductivityFeatures() {
     const coreVisual = document.querySelector('.core-visual');
@@ -404,6 +420,11 @@ async function refreshRuntimeStatus() {
         const footerStatus = document.querySelector('.sidebar-footer b');
         const runtimePill = document.querySelector('.core-panel .pill, .core-deck .pill');
         const healthy = response.ok && data.status === 'ok';
+        const runtimeState = healthy ? (data.ai_configured ? 'online' : 'setup') : 'degraded';
+        if (previousRuntimeState && previousRuntimeState !== runtimeState) {
+            showJarvisToast(runtimeState === 'online' ? 'AI gateway connection restored.' : 'Runtime status requires attention.', runtimeState === 'online' ? 'success' : 'warning');
+        }
+        previousRuntimeState = runtimeState;
         document.body.classList.toggle('runtime-degraded', !healthy);
         if (status) {
             status.innerHTML = healthy
