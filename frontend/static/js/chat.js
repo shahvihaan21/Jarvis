@@ -138,7 +138,7 @@ function startBootSequence() {
 }
 
 function setupVoiceControls() {
-    const panel = document.querySelector('.chat-panel');
+    const panel = document.querySelector('.chat-panel, .chat-deck');
     const messages = document.getElementById('messagesContainer');
     if (!panel || !messages) return;
     const toolbar = document.createElement('div');
@@ -402,7 +402,7 @@ async function refreshRuntimeStatus() {
         const data = await response.json();
         const status = document.querySelector('.live');
         const footerStatus = document.querySelector('.sidebar-footer b');
-        const runtimePill = document.querySelector('.core-panel .pill');
+        const runtimePill = document.querySelector('.core-panel .pill, .core-deck .pill');
         const healthy = response.ok && data.status === 'ok';
         document.body.classList.toggle('runtime-degraded', !healthy);
         if (status) {
@@ -415,7 +415,7 @@ async function refreshRuntimeStatus() {
             runtimePill.classList.toggle('green', healthy);
             runtimePill.textContent = healthy ? '● OPERATIONAL' : '● DEGRADED';
         }
-        const metrics = document.querySelectorAll('.metrics .metric');
+        const metrics = document.querySelectorAll('.metrics .metric, .tactical-metrics > div');
         if (metrics[0] && data.conversations !== undefined) metrics[0].querySelector('strong').textContent = String(data.conversations).padStart(2, '0');
         if (metrics[1] && data.messages !== undefined) metrics[1].querySelector('strong').textContent = String(data.messages);
         if (metrics[2]) metrics[2].querySelector('strong').innerHTML = `${((performance.now() - startedAt) / 1000).toFixed(2)}<span>s</span>`;
