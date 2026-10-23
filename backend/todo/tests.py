@@ -23,6 +23,11 @@ class LocalCommandTests(TestCase):
     def test_youtube_command(self):
         self.assertIn("youtube.com/results", local_command("play jazz").lower())
 
+    def test_productivity_commands_are_persisted(self):
+        from .views import execute_productivity_command
+        self.assertIn("Added", execute_productivity_command("add milk to my list"))
+        self.assertIn("Reminder set", execute_productivity_command("remind me in 10 minutes to drink water"))
+
 
 class ChatApiTests(TestCase):
     def setUp(self):

@@ -63,4 +63,15 @@ class Reminder(models.Model):
         ordering = ['fired', 'due_at']
 
 
+class Memory(models.Model):
+    key = models.CharField(max_length=120)
+    value = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+        constraints = [models.UniqueConstraint(fields=['key'], name='unique_memory_key')]
+
+
     

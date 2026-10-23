@@ -12,7 +12,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, StreamingHttpResponse
-from .models import Conversation, ChatMessage, TodoItem, Note, Reminder
+from .models import Conversation, ChatMessage, TodoItem, Note, Reminder, Memory
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,19 @@ def execute_productivity_command(prompt):
         return f"Reminder set for **{reminder.due_at.strftime('%H:%M')}**: {reminder.title}"
     return None
 
+
+def execute_memory_command(prompt):
+    """Store or recall a small user fact for later conversations."""
+    remember = re.match(r'(?:my\s+)?(name|favorite|favourite|preference)\s+is\s+(.+)$', prompt.strip(), re.I)
+    if remember:
+        key, value = remember.groups()
+        memory, _ = Memory.objects.update_or_create(key=key.lower(), defaults={'value': value.strip()})
+        return f"I’ll remember that your {memory.key} is **{memory.value}**."
+    if re.fullmatch(r'(what do you remember|show my memories|my memories)', prompt.strip(), re.I):
+        memories = list(Memory.objects.values_list('key', 'value'))
+        return '\n'.join(f'- {key}: {value}' for key, value in memories) if memories else 'I do not have any saved memories yet.'
+    return None
+
 def provider_config():
     """Read an OpenAI-compatible provider at request time; no vendor SDK is required."""
     return {
@@ -135,6 +148,9 @@ def build_messages_payload(history_messages) -> list:
             'Answer clearly and accurately. Use Markdown for formatting and code blocks.'
         )
     }]
+    memories = Memory.objects.values('key', 'value')[:20]
+    if memories:
+        messages[0]['content'] += '\nKnown user preferences:\n' + '\n'.join(f"- {item['key']}: {item['value']}" for item in memories)
     # Bound to recent messages to avoid context bloat & slow LLM generation
     bounded_history = history_messages[-MAX_HISTORY_TURNS:] if len(history_messages) > MAX_HISTORY_TURNS else history_messages
     for msg in bounded_history:
@@ -186,6 +202,7 @@ def productivity_api(request):
         'todos': list(TodoItem.objects.values('id', 'title', 'completed', 'created_at')),
         'notes': list(Note.objects.values('id', 'title', 'content', 'updated_at')[:20]),
         'reminders': list(Reminder.objects.filter(fired=False).values('id', 'title', 'due_at')[:20]),
+        'memories': list(Memory.objects.values('id', 'key', 'value', 'updated_at')[:20]),
     }, default=str)
 
 def export_conversation(request, conversation_id):
@@ -244,7 +261,7 @@ def chat_api(request):
         # Retrieve recent history efficiently
         history = list(conversation.messages.order_by('created_at'))
         messages_payload = build_messages_payload(history)
-        reply = execute_productivity_command(prompt) or local_command(prompt) or generate_reply(messages_payload)
+        reply = execute_productivity_command(prompt) or execute_memory_command(prompt) or local_command(prompt) or generate_reply(messages_payload)
 
         if stream_requested:
             def stream_generator() -> Generator[str, None, None]:
