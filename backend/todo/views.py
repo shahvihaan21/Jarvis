@@ -2,6 +2,9 @@ import json
 import logging
 from typing import Generator
 import os
+import re
+from datetime import datetime
+from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from django.db import connection
@@ -12,6 +15,70 @@ from .models import Conversation, ChatMessage
 logger = logging.getLogger(__name__)
 
 MAX_HISTORY_TURNS = 12
+
+def local_command(prompt):
+    """Handle simple Level 1 commands without requiring an AI provider."""
+    text = prompt.lower().strip()
+    now = datetime.now()
+
+    if re.fullmatch(r'(help|commands|what can you do|capabilities)\s*[?.!]*', text):
+        return ("### Level 1 capabilities\n\n"
+                "- Time and date\n- Jokes and greetings\n- Web and Wikipedia search\n"
+                "- YouTube and music lookup\n- Open supported websites\n\n"
+                "Try: `what time is it`, `search for Python`, or `play jazz music`.")
+    if re.search(r'\b(hello|hi|hey|good morning|good evening)\b', text):
+        return f"Hello. JARVIS is ready. It is **{now.strftime('%I:%M %p')}**. How can I help?"
+    if re.search(r'\b(thank you|thanks)\b', text):
+        return "Always happy to help."
+
+    if re.search(r'\b(time|what time is it|current time)\b', text):
+        return f"The current time is **{now.strftime('%I:%M %p')}**."
+    if re.search(r'\b(date|what day is it|today)\b', text):
+        return f"Today is **{now.strftime('%A, %B %d, %Y')}**."
+    if re.search(r'\b(joke|make me laugh|funny)\b', text):
+        return "Why did the computer get cold? Because it left its Windows open."
+
+    wiki_match = re.search(r'(?:who is|what is|tell me about|wikipedia)\s+(.+)', prompt, re.I)
+    if wiki_match:
+        topic = wiki_match.group(1).strip(' ?.')
+        return (f"[Search Wikipedia for **{topic}**](https://en.wikipedia.org/w/index.php?search={quote_plus(topic)})\n\n"
+                f"I found a focused reference for {topic}. Open it to read the latest summary.")
+
+    search_match = re.search(r'(?:search(?: the web)? for|look up|google)\s+(.+)', prompt, re.I)
+    if search_match:
+        query = search_match.group(1).strip(' ?.')
+        return f"[Search the web for **{query}**](https://www.google.com/search?q={quote_plus(query)})"
+
+    youtube_match = re.search(r'(?:play|youtube|watch)\s+(.+)', prompt, re.I)
+    if youtube_match:
+        query = youtube_match.group(1).strip(' ?.')
+        return f"[Open **{query}** on YouTube](https://www.youtube.com/results?search_query={quote_plus(query)})"
+
+    site_match = re.search(r'open\s+(https?://\S+|[\w.-]+\.[a-z]{2,})', prompt, re.I)
+    if site_match:
+        url = site_match.group(1)
+        if not url.startswith('http'):
+            url = f'https://{url}'
+        return f"[Open {url}](<{url}>)"
+
+    shortcuts = {
+        'google': 'https://www.google.com',
+        'youtube': 'https://www.youtube.com',
+        'gmail': 'https://mail.google.com',
+        'github': 'https://github.com',
+        ' wikipedia': 'https://www.wikipedia.org',
+    }
+    for name, url in shortcuts.items():
+        if re.search(rf'\bopen\s+{re.escape(name.strip())}\b', text):
+            return f"[Open {name.strip().title()}]({url})"
+
+    if re.search(r'\b(open|launch)\b', text) and re.search(r'\b(app|application|file|folder)\b', text):
+        return ("I can open websites from this browser. Desktop apps and local files need a local companion service "
+                "with explicit permissions; I will keep that capability disabled until it is configured safely.")
+
+    if re.search(r'\b(music|songs|playlist)\b', text):
+        return "[Open YouTube Music](https://music.youtube.com/) or ask me to play a specific song."
+    return None
 
 def provider_config():
     """Read an OpenAI-compatible provider at request time; no vendor SDK is required."""
@@ -144,7 +211,7 @@ def chat_api(request):
         # Retrieve recent history efficiently
         history = list(conversation.messages.order_by('created_at'))
         messages_payload = build_messages_payload(history)
-        reply = generate_reply(messages_payload)
+        reply = local_command(prompt) or generate_reply(messages_payload)
 
         if stream_requested:
             def stream_generator() -> Generator[str, None, None]:

@@ -558,8 +558,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     scrollToBottom();
     setupVoiceControls();
+    setupQuickActions();
     refreshRuntimeStatus();
 });
+
+function setupQuickActions() {
+    const form = document.getElementById('chatForm');
+    const input = document.getElementById('promptInput');
+    if (!form || !input || form.querySelector('.quick-actions')) return;
+    const dock = document.createElement('div');
+    dock.className = 'quick-actions';
+    dock.setAttribute('aria-label', 'Quick commands');
+    const actions = [['⌚ Time', 'What time is it?'], ['◫ Date', 'What is today’s date?'], ['◉ Joke', 'Tell me a joke'], ['◎ Search', 'Search the web for '], ['▶ YouTube', 'Play ']];
+    actions.forEach(([label, prompt]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.addEventListener('click', () => { input.value = prompt; input.focus(); });
+        dock.appendChild(button);
+    });
+    form.insertBefore(dock, form.firstElementChild);
+}
 
 async function refreshRuntimeStatus() {
     const startedAt = performance.now();
