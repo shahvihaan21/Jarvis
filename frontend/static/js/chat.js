@@ -70,6 +70,8 @@ function escapeHtml(text) {
 let speechRecognition = null;
 let isListening = false;
 let speakReplies = true;
+let selectedVoiceName = localStorage.getItem('jarvis.voice') || '';
+let audioMuted = localStorage.getItem('jarvis.muted') === 'true';
 let commandPalette = null;
 let previousRuntimeState = null;
 let audioEnabled = false;
@@ -332,7 +334,12 @@ function setupVoiceControls() {
             if (event.results[i].isFinal) finalText += text;
             else interimText += text;
         }
-        if (input && finalText) input.value = `${input.value} ${finalText}`.trim();
+        if (input && finalText) {
+            const wakeMatch = finalText.match(/^\s*(?:hey\s+)?jarvis[,:]?\s*(.*)$/i);
+            const command = wakeMatch ? wakeMatch[1] : finalText;
+            input.value = `${input.value} ${command}`.trim();
+            if (wakeMatch && command) { stopListening(); handleSend(); }
+        }
         setVoiceStatus(interimText ? `Listening: ${interimText}` : 'Listening…');
     };
     speechRecognition.onerror = (event) => {
@@ -374,10 +381,32 @@ function speakReply(text) {
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 1.02;
     utterance.volume = 1;
+    const voices = window.speechSynthesis.getVoices();
+    utterance.voice = voices.find(voice => voice.name === selectedVoiceName) || voices.find(voice => /en[-_](GB|US)/i.test(voice.lang)) || voices.find(voice => /^en/i.test(voice.lang)) || null;
     utterance.onerror = () => setVoiceStatus('Speech output failed. Check the browser audio permission.');
     utterance.onstart = () => setVoiceStatus('Speaking reply…');
     utterance.onend = () => { if (!isListening) setVoiceStatus('Voice channel ready'); };
     window.speechSynthesis.speak(utterance);
+}
+
+function setupVoicePreferences() {
+    const actions = document.querySelector('.voice-actions');
+    if (!actions || actions.querySelector('.voice-picker')) return;
+    const select = document.createElement('select');
+    select.className = 'voice-picker';
+    select.setAttribute('aria-label', 'Speech voice');
+    const fill = () => {
+        const voices = window.speechSynthesis?.getVoices?.() || [];
+        select.innerHTML = '<option value="">AUTO VOICE</option>';
+        voices.filter(voice => /^en/i.test(voice.lang)).forEach(voice => {
+            const option = new Option(voice.name, voice.name);
+            option.selected = voice.name === selectedVoiceName;
+            select.add(option);
+        });
+    };
+    select.addEventListener('change', () => { selectedVoiceName = select.value; localStorage.setItem('jarvis.voice', selectedVoiceName); });
+    actions.appendChild(select); fill();
+    window.speechSynthesis?.addEventListener?.('voiceschanged', fill);
 }
 
 async function handleSend(e) {
@@ -568,6 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     scrollToBottom();
     setupVoiceControls();
+    setupVoicePreferences();
     setupQuickActions();
     refreshRuntimeStatus();
 });
@@ -592,7 +622,14 @@ function setupQuickActions() {
 
 function playStartupSoundOnce() {
     const audio = document.getElementById('startupSound');
-    if (!audio || window.__jarvisStartupSoundPlayed) return;
+    const toggle = document.getElementById('audioToggle');
+    if (toggle && !window.__jarvisAudioBound) {
+        window.__jarvisAudioBound = true;
+        const render = () => { toggle.textContent = audioMuted ? '○ AUDIO MUTED' : '◉ AUDIO READY'; toggle.classList.toggle('muted', audioMuted); };
+        render();
+        toggle.addEventListener('click', () => { audioMuted = !audioMuted; localStorage.setItem('jarvis.muted', String(audioMuted)); if (audioMuted) audio?.pause(); render(); if (!audioMuted && !window.__jarvisStartupSoundPlayed) playStartupSoundOnce(); });
+    }
+    if (!audio || audioMuted || window.__jarvisStartupSoundPlayed) return;
     window.__jarvisStartupSoundPlayed = true;
     audio.volume = 0.28;
     audio.currentTime = 0;
