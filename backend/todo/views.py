@@ -3,6 +3,7 @@ import logging
 from typing import Generator
 import os
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
@@ -204,6 +205,35 @@ def productivity_api(request):
         'reminders': list(Reminder.objects.filter(fired=False).values('id', 'title', 'due_at')[:20]),
         'memories': list(Memory.objects.values('id', 'key', 'value', 'updated_at')[:20]),
     }, default=str)
+
+
+def briefing_api(request):
+    """Fetch optional no-key weather/news data with graceful failure."""
+    location = request.GET.get('location', 'New Delhi').strip()[:80]
+    result = {'weather': None, 'news': [], 'warnings': []}
+    try:
+        geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={quote_plus(location)}&count=1&language=en&format=json"
+        with urlopen(Request(geo_url, headers={'User-Agent': 'Jarvis/1.0'}), timeout=8) as response:
+            geo = json.loads(response.read().decode())
+        place = (geo.get('results') or [None])[0]
+        if place:
+            weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={place['latitude']}&longitude={place['longitude']}&current=temperature_2m,weather_code,wind_speed_10m"
+            with urlopen(Request(weather_url, headers={'User-Agent': 'Jarvis/1.0'}), timeout=8) as response:
+                current = json.loads(response.read().decode()).get('current', {})
+            result['weather'] = {'location': place.get('name', location), **current}
+        else:
+            result['warnings'].append('Location not found.')
+    except (HTTPError, URLError, ValueError, KeyError) as error:
+        logger.warning('Weather unavailable: %s', error)
+        result['warnings'].append('Weather is temporarily unavailable.')
+    try:
+        with urlopen(Request('https://feeds.bbci.co.uk/news/world/rss.xml', headers={'User-Agent': 'Jarvis/1.0'}), timeout=8) as response:
+            root = ET.fromstring(response.read())
+        result['news'] = [{'title': item.findtext('title', ''), 'url': item.findtext('link', '')} for item in root.findall('./channel/item')[:5]]
+    except (HTTPError, URLError, ET.ParseError) as error:
+        logger.warning('News unavailable: %s', error)
+        result['warnings'].append('News is temporarily unavailable.')
+    return JsonResponse(result)
 
 def export_conversation(request, conversation_id):
     """Export a conversation as JSON for debugging, handoff, or archival."""
