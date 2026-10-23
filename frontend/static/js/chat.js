@@ -305,9 +305,18 @@ function setupVoiceControls() {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     voiceButton ||= document.getElementById('voiceToggle');
     speakButton ||= document.getElementById('speakToggle');
+    if (speakButton) {
+        speakButton.onclick = () => {
+            speakReplies = !speakReplies;
+            speakButton.classList.toggle('active', speakReplies);
+            speakButton.setAttribute('aria-pressed', String(speakReplies));
+            if (!speakReplies) window.speechSynthesis?.cancel();
+            setVoiceStatus(speakReplies ? 'Spoken replies enabled.' : 'Spoken replies muted.');
+        };
+    }
     if (!Recognition) {
         voiceButton.disabled = true;
-        setVoiceStatus('Voice input is not supported in this browser. Try Chrome or Edge.');
+        setVoiceStatus('Voice input needs Chrome or Edge microphone support. Spoken replies remain available.');
         return;
     }
     speechRecognition = new Recognition();
@@ -332,12 +341,6 @@ function setupVoiceControls() {
     };
     speechRecognition.onend = () => { if (isListening) speechRecognition.start(); };
     voiceButton.onclick = () => isListening ? stopListening() : startListening();
-    speakButton.onclick = () => {
-        speakReplies = !speakReplies;
-        speakButton.classList.toggle('active', speakReplies);
-        speakButton.setAttribute('aria-pressed', String(speakReplies));
-        if (!speakReplies) window.speechSynthesis?.cancel();
-    };
 }
 
 function setVoiceStatus(message) {
@@ -366,8 +369,14 @@ function stopListening() {
 function speakReply(text) {
     if (!speakReplies || !window.speechSynthesis || !text) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text.replace(/[*_`#>\[\]]/g, ''));
+    const cleanText = text.replace(/https?:\/\/\S+/g, '').replace(/[*_`#>\[\]]/g, '').replace(/\s+/g, ' ').trim();
+    if (!cleanText) return;
+    const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 1.02;
+    utterance.volume = 1;
+    utterance.onerror = () => setVoiceStatus('Speech output failed. Check the browser audio permission.');
+    utterance.onstart = () => setVoiceStatus('Speaking reply…');
+    utterance.onend = () => { if (!isListening) setVoiceStatus('Voice channel ready'); };
     window.speechSynthesis.speak(utterance);
 }
 
@@ -546,6 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const deck = document.querySelector('.tactical-main');
     if (deck) Object.assign(deck.style, { display: 'block', position: 'relative', opacity: '1', visibility: 'visible', transform: 'none', filter: 'none' });
     startBootSequence();
+    playStartupSoundOnce();
     setupProductivityFeatures();
     // Initial render of existing message bubbles from backend
     document.querySelectorAll('.msg-content').forEach(el => {
@@ -578,6 +588,20 @@ function setupQuickActions() {
         dock.appendChild(button);
     });
     form.insertBefore(dock, form.firstElementChild);
+}
+
+function playStartupSoundOnce() {
+    const audio = document.getElementById('startupSound');
+    if (!audio || window.__jarvisStartupSoundPlayed) return;
+    window.__jarvisStartupSoundPlayed = true;
+    audio.volume = 0.28;
+    audio.currentTime = 0;
+    const play = () => audio.play().catch(() => {
+        const resume = () => { audio.play().catch(() => {}); window.removeEventListener('pointerdown', resume); window.removeEventListener('keydown', resume); };
+        window.addEventListener('pointerdown', resume, { once: true });
+        window.addEventListener('keydown', resume, { once: true });
+    });
+    play();
 }
 
 async function refreshRuntimeStatus() {

@@ -1,6 +1,71 @@
-{% load static %}<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>J.A.R.V.I.S. // Tactical Interface</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="{% static 'css/style.css' %}"></head><body data-ai-model="{{ model_name }}">
-<main class="jarvis-interface"><img class="full-blueprint" src="{% static 'img/jarvis-armor-schematic.svg' %}" alt="JARVIS tactical armor blueprint"><header class="jarvis-header"><div class="micro-brand"><span>J.A.R.V.I.S.</span><small>TACTICAL INTELLIGENCE SYSTEM</small></div><div class="header-readout"><span>POWER <b>98.4%</b></span><span>MEMORY <b>92%</b></span><span>LINK <b>SECURE</b></span></div><div class="top-status"><span class="live"><i></i> SYSTEM ONLINE</span><span class="top-clock" id="systemClock">00:00:00</span><div class="avatar">V</div></div></header>
-<section class="blueprint-overlay"><div class="corner-data top-left">ARMOR PLATFORM / MK-05<br><span>NEURAL INTERFACE ACTIVE</span></div><div class="corner-data top-right">SYSTEM 01 / LIVE<br><span id="runtimeText">ALL SYSTEMS NOMINAL</span></div><div class="side-readout left-data">REASONING NODE <b>CONNECTED</b><br>CONTEXT WINDOW <b>12 TURNS</b><br>VOICE CHANNEL <b>READY</b></div><div class="side-readout right-data">TOOLS MODULE <b>READY</b><br>THREAT LEVEL <b>LOW</b><br>LATENCY <b>1.8s</b></div></section>
-<section class="voice-console tactical-core"><div class="core-title"><span>J.A.R.V.I.S. CORE</span><b>WAITING FOR COMMAND</b></div><div class="core-visual"><div class="core-node"><span>JARVIS</span><small>AI CORE · v0.3.0</small></div></div><div class="voice-actions"><button class="voice-command" id="voiceToggle" type="button" aria-pressed="false">◉ START VOICE</button><button class="voice-command secondary" id="speakToggle" type="button" aria-pressed="true">◌ SPEAK REPLIES</button><span id="voiceStatus">Voice channel ready</span></div></section>
-<section class="minimal-chat chat-deck" id="memory"><div class="messages-container" id="messagesContainer">{% if chat_messages %}{% for msg in chat_messages %}<div class="msg-wrapper {% if msg.sender == 'user' %}user{% else %}ai{% endif %}"><div class="msg-bubble"><div class="msg-content"><template class="raw-content">{{ msg.content }}</template></div><div class="msg-time">{{ msg.created_at|date:'H:i' }}</div></div></div>{% endfor %}{% else %}<div class="minimal-empty">SYSTEM READY · TRANSMIT A COMMAND</div>{% endif %}</div><form id="chatForm" onsubmit="handleSend(event)">{% csrf_token %}<input type="hidden" id="conversationId" value="{% if active_conversation %}{{ active_conversation.id }}{% endif %}"><div class="transmit-bar"><span>⌁</span><textarea id="promptInput" rows="1" placeholder="Speak or type a command to Jarvis..." onkeydown="checkEnter(event)"></textarea><button id="sendBtn" type="submit" aria-label="Transmit command">TRANSMIT ↑</button></div></form></section>
-<footer class="jarvis-footer"><span>SECURE LOCAL RUNTIME</span><span>MIC INPUT ENABLED</span><span>CTRL + K COMMANDS</span></footer></main><script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script><script src="{% static 'js/chat.js' %}"></script><script>setInterval(()=>{const e=document.getElementById('systemClock');if(e)e.textContent=new Date().toLocaleTimeString('en-GB')},1000);</script></body></html>
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>J.A.R.V.I.S. // Neural Command Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body data-ai-model="{{ model_name }}">
+<main class="jarvis-interface">
+  <img class="full-blueprint" src="{% static 'img/jarvis-reference.jpg' %}" alt="JARVIS armor blueprint">
+
+  <header class="jarvis-header">
+    <div class="micro-brand"><span>J.A.R.V.I.S.</span><small>TACTICAL INTELLIGENCE SYSTEM</small></div>
+    <div class="header-readout" aria-label="System telemetry">
+      <span>POWER <b>98.4%</b></span><span>MEMORY <b>92%</b></span><span>LINK <b>SECURE</b></span>
+    </div>
+    <div class="top-status">
+      <span class="audio-toggle" id="audioToggle">◉ AUDIO READY</span>
+      <span class="live"><i></i> AI SETUP REQUIRED</span>
+      <span class="top-clock" id="systemClock">00:00:00</span><div class="avatar">V</div>
+    </div>
+  </header>
+
+  <section class="blueprint-overlay" aria-label="System telemetry">
+    <div class="corner-data top-left">ARMOR PLATFORM / MK-05<br><span>NEURAL INTERFACE ACTIVE</span></div>
+    <div class="corner-data top-right">SYSTEM 01 / LIVE<br><span id="runtimeText">ALL SYSTEMS NOMINAL</span></div>
+    <div class="side-readout left-data">REASONING NODE <b>CONNECTED</b><br>CONTEXT WINDOW <b>12 TURNS</b><br>VOICE CHANNEL <b>READY</b></div>
+    <div class="side-readout right-data">TOOLS MODULE <b>READY</b><br>THREAT LEVEL <b>LOW</b><br>LATENCY <b>1.8s</b></div>
+  </section>
+
+  <section class="capability-rail" aria-label="Available capabilities">
+    <span class="rail-label">LEVEL 01 / AVAILABLE</span>
+    <span>⌚ TIME</span><span>◫ DATE</span><span>◎ WEB</span><span>▶ MEDIA</span>
+  </section>
+
+  <section class="voice-console tactical-core" aria-label="JARVIS neural core">
+    <div class="core-title"><span>J.A.R.V.I.S. CORE</span><b>WAITING FOR COMMAND</b></div>
+    <div class="core-visual"><div class="core-node"><span>JARVIS</span><small>AI CORE · v0.3.0</small></div></div>
+    <div class="voice-actions">
+      <button class="voice-command" id="voiceToggle" type="button" aria-pressed="false">◉ START VOICE</button>
+      <button class="voice-command secondary" id="speakToggle" type="button" aria-pressed="true">◌ SPEAK REPLIES</button>
+      <span id="voiceStatus">Voice channel ready</span>
+    </div>
+  </section>
+
+  <section class="minimal-chat chat-deck" id="memory" aria-label="JARVIS command console">
+    <div class="messages-container" id="messagesContainer">
+      {% if chat_messages %}
+        {% for msg in chat_messages %}<div class="msg-wrapper {% if msg.sender == 'user' %}user{% else %}ai{% endif %}"><div class="msg-bubble"><div class="msg-content"><template class="raw-content">{{ msg.content }}</template></div><div class="msg-time">{{ msg.created_at|date:'H:i' }}</div></div></div>{% endfor %}
+      {% else %}<div class="minimal-empty">SYSTEM READY · SELECT A QUICK ACTION OR TRANSMIT A COMMAND</div>{% endif %}
+    </div>
+    <form id="chatForm" onsubmit="handleSend(event)">
+      {% csrf_token %}<input type="hidden" id="conversationId" value="{% if active_conversation %}{{ active_conversation.id }}{% endif %}">
+      <div class="transmit-bar"><span>⌁</span><textarea id="promptInput" rows="1" placeholder="Speak or type a command to Jarvis..." aria-label="Command for JARVIS" onkeydown="checkEnter(event)"></textarea><button id="sendBtn" type="submit" aria-label="Transmit command">TRANSMIT ↑</button></div>
+    </form>
+  </section>
+
+  <footer class="jarvis-footer"><span>SECURE LOCAL RUNTIME</span><span>MIC INPUT ENABLED</span><span>CTRL + K COMMANDS</span><span>MODEL: {{ model_name }}</span></footer>
+</main>
+<audio id="startupSound" preload="auto"><source src="{% static 'audio/jarvis-theme.mp3' %}" type="audio/mpeg"></audio>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="{% static 'js/chat.js' %}"></script>
+<script>setInterval(()=>{const e=document.getElementById('systemClock');if(e)e.textContent=new Date().toLocaleTimeString('en-GB')},1000);</script>
+</body>
+</html>

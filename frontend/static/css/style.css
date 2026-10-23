@@ -72,3 +72,6 @@ html body .jarvis-interface .minimal-chat form{margin-top:10px;padding-top:0}.mi
 .minimal-chat .quick-actions{margin:9px 0 0;padding-top:9px;border-top:0}.quick-actions button{background:rgba(10,50,67,.7);border-color:rgba(58,139,163,.72)}
 .transmit-bar{min-height:43px}.transmit-bar textarea{min-height:28px!important}
 @media(max-width:800px){html body .jarvis-interface .minimal-chat{width:calc(100vw - 28px);max-height:48vh;resize:none;bottom:48px;padding:12px}.minimal-chat:after{display:none}html body .jarvis-interface .minimal-chat .messages-container{height:84px}}
+.audio-toggle{border:1px solid rgba(67,217,239,.72);border-radius:3px;padding:5px 8px;color:#9beaf5;font-size:8px;letter-spacing:.5px;background:rgba(3,35,51,.7);box-shadow:0 0 12px rgba(67,217,239,.1)}
+.capability-rail{position:absolute;z-index:4;left:50%;bottom:27px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;color:#70a9b9;font:8px 'DM Mono';letter-spacing:1px;white-space:nowrap}.capability-rail span:not(.rail-label){padding:5px 7px;border:1px solid rgba(46,111,132,.5);border-radius:3px;background:rgba(2,18,29,.58)}.capability-rail .rail-label{color:#397184;margin-right:5px}
+@media(max-width:800px){.capability-rail{display:none}.jarvis-footer span:last-child{display:none}}@media(max-width:520px){.audio-toggle{display:none}}
