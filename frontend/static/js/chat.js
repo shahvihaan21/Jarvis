@@ -455,6 +455,12 @@ async function handleSend(e) {
             const decoder = new TextDecoder();
             let accumulatedText = '';
             let buffer = '';
+            let renderFrame = 0;
+            const renderStream = () => {
+                renderFrame = 0;
+                if (msgContentEl) msgContentEl.innerHTML = renderMarkdown(accumulatedText);
+                scrollToBottom();
+            };
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -474,11 +480,11 @@ async function handleSend(e) {
                                 }
                             } else if (eventData.type === 'chunk') {
                                 accumulatedText += eventData.delta;
-                                if (msgContentEl) {
-                                    msgContentEl.innerHTML = renderMarkdown(accumulatedText);
-                                }
-                                scrollToBottom();
+                                // Batch streamed markdown work to one paint per frame.
+                                if (!renderFrame) renderFrame = requestAnimationFrame(renderStream);
                             } else if (eventData.type === 'done') {
+                                if (renderFrame) cancelAnimationFrame(renderFrame);
+                                renderStream();
                                 speakReply(accumulatedText);
                                 if (eventData.ai_time && timeLabel) {
                                     timeLabel.innerText = eventData.ai_time;
