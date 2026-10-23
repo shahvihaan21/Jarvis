@@ -8,6 +8,7 @@ urlpatterns = [
     path("delete/<uuid:conversation_id>/", views.delete_chat, name="delete_chat"),
     path("api/chat/", views.chat_api, name="chat_api"),
     path("api/health/", views.health_api, name="health_api"),
+    path("api/productivity/", views.productivity_api, name="productivity_api"),
     path("api/conversations/<uuid:conversation_id>/export/", views.export_conversation, name="export_conversation"),
 ]
 

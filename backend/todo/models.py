@@ -34,4 +34,33 @@ class ChatMessage(models.Model):
         return f"{self.sender.upper()}: {self.content[:30]}"
 
 
+class TodoItem(models.Model):
+    title = models.CharField(max_length=255)
+    completed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['completed', '-created_at']
+
+
+class Note(models.Model):
+    title = models.CharField(max_length=255, blank=True)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+
+class Reminder(models.Model):
+    title = models.CharField(max_length=255)
+    due_at = models.DateTimeField()
+    fired = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['fired', 'due_at']
+
+
     

@@ -8,9 +8,11 @@ from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from django.db import connection
+from django.utils import timezone
+from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, StreamingHttpResponse
-from .models import Conversation, ChatMessage
+from .models import Conversation, ChatMessage, TodoItem, Note, Reminder
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +80,26 @@ def local_command(prompt):
 
     if re.search(r'\b(music|songs|playlist)\b', text):
         return "[Open YouTube Music](https://music.youtube.com/) or ask me to play a specific song."
+    return None
+
+
+def execute_productivity_command(prompt):
+    """Persist simple personal-assistant actions and return a user-facing result."""
+    text = prompt.strip()
+    todo_match = re.match(r'(?:add|remember)\s+(.+?)\s+to\s+(?:my\s+)?(?:todo|to-do|list)$', text, re.I)
+    if todo_match:
+        item = TodoItem.objects.create(title=todo_match.group(1).strip())
+        return f"Added **{item.title}** to your to-do list."
+    note_match = re.match(r'(?:take|save)\s+(?:a\s+)?note(?:\s+that)?\s*[:\-]?\s*(.+)$', text, re.I)
+    if note_match:
+        note = Note.objects.create(content=note_match.group(1).strip())
+        return f"Saved your note: **{note.content}**"
+    reminder_match = re.match(r'remind me in\s+(\d+)\s+(minute|minutes|hour|hours)\s+to\s+(.+)$', text, re.I)
+    if reminder_match:
+        amount, unit, title = reminder_match.groups()
+        seconds = int(amount) * (3600 if unit.lower().startswith('hour') else 60)
+        reminder = Reminder.objects.create(title=title.strip(), due_at=timezone.now() + timedelta(seconds=seconds))
+        return f"Reminder set for **{reminder.due_at.strftime('%H:%M')}**: {reminder.title}"
     return None
 
 def provider_config():
@@ -155,6 +177,17 @@ def health_api(request):
         'messages': ChatMessage.objects.count(),
     }, status=200 if database == 'ok' else 503)
 
+
+def productivity_api(request):
+    """Read-only dashboard data for tasks, notes, and pending reminders."""
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Only GET allowed'}, status=405)
+    return JsonResponse({
+        'todos': list(TodoItem.objects.values('id', 'title', 'completed', 'created_at')),
+        'notes': list(Note.objects.values('id', 'title', 'content', 'updated_at')[:20]),
+        'reminders': list(Reminder.objects.filter(fired=False).values('id', 'title', 'due_at')[:20]),
+    }, default=str)
+
 def export_conversation(request, conversation_id):
     """Export a conversation as JSON for debugging, handoff, or archival."""
     conversation = get_object_or_404(Conversation, id=conversation_id)
@@ -211,7 +244,7 @@ def chat_api(request):
         # Retrieve recent history efficiently
         history = list(conversation.messages.order_by('created_at'))
         messages_payload = build_messages_payload(history)
-        reply = local_command(prompt) or generate_reply(messages_payload)
+        reply = execute_productivity_command(prompt) or local_command(prompt) or generate_reply(messages_payload)
 
         if stream_requested:
             def stream_generator() -> Generator[str, None, None]:
