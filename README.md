@@ -4,6 +4,8 @@ Jarvis is a Django-based AI engineering workspace for conversations, memory, age
 
 ## AI provider
 
+
+
 The backend uses an OpenAI-compatible `/chat/completions` gateway with no vendor-specific SDK dependency.
 
 Configure the provider before starting the server:
